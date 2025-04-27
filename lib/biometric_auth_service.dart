@@ -9,12 +9,14 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'auth_crypto_service.dart';
+import 'package:local_auth/local_auth.dart';
 
 class BiometricAuthService {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
   final _functions = FirebaseFunctions.instance;
   final _cryptoService = AuthCryptoService();
+  final LocalAuthentication _localAuth = LocalAuthentication();
 
   Future<void> registerWithCredentials(String userId) async {
     try {
@@ -36,56 +38,21 @@ class BiometricAuthService {
     }
   }
 
-  Future<UserCredential> signInWithBiometrics() async {
+  Future<void> signInWithBiometrics() async {
     try {
-      // Ensure clean state
-      await _auth.signOut();
-
-      // 1. Get server challenge
-      final challenge = await _generateServerChallenge();
-
-      // 2. Access private key with biometrics
-      final keyPair = await _cryptoService.getKeyPairWithBiometrics();
-
-      // 3. Sign the challenge
-      final signature = _signData(challenge, keyPair.privateKey);
-
-      // 4. Get the public key from the stored key pair
-      final rsaPublicKey = keyPair.publicKey as RSAPublicKey;
-      final publicKeyString = _serializePublicKey(keyPair.publicKey);
-
-      // 5. Find the user ID by searching for the public key
-      final querySnapshot = await _firestore
-          .collection('userKeys')
-          .where('publicKey', isEqualTo: publicKeyString)
-          .limit(1)
-          .get();
-
-      if (querySnapshot.docs.isEmpty) {
-        throw Exception('No user found with this key pair');
-      }
-
-      final userId = querySnapshot.docs.first.id;
-
-      // 7. Verify with Firebase
-      final token = await _verifySignature(
-        userId: userId,
-        challenge: challenge,
-        signature: signature,
+      final didAuthenticate = await _localAuth.authenticate(
+        localizedReason: 'Scan your fingerprint to authenticate',
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
       );
-
-      // 8. Sign in with the custom token
-      final userCredential = await _auth.signInWithCustomToken(token);
-
-      // 9. Verify the sign in was successful
-      if (userCredential.user == null) {
-        throw Exception('Failed to sign in with custom token');
+      if (!didAuthenticate) {
+        throw Exception('Biometric authentication failed');
       }
-
-      return userCredential;
+      // If successful, just return
+      return;
     } catch (e) {
-      // Ensure clean state on error
-      await _auth.signOut();
       throw Exception('Biometric authentication failed: $e');
     }
   }

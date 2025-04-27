@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'login_screen.dart';
+import 'main_page_screen.dart';
+import 'fingerprint_screen.dart';
+import 'qr_scan_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +23,13 @@ class FingerprintApp extends StatelessWidget {
     return MaterialApp(
       title: 'Fingerprint Auth',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const LoginScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginScreen(),
+        '/main': (context) => const MainPageScreen(),
+        '/fingerprint': (context) => const FingerprintScreen(),
+        '/qrscan': (context) => const QRScanScreen(),
+      },
     );
   }
 }

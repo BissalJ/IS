@@ -40,6 +40,8 @@ dependencies:
   flutter_secure_storage: ^8.0.0
   pointycastle: ^3.7.3
   crypto: ^3.0.3
+  # qr_code_scanner: ^1.0.1
+  mobile_scanner: ^3.5.5
 
 dev_dependencies:
   flutter_test:
