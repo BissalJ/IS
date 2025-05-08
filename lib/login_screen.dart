@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:fingerprint_auth_app/auth_service.dart';
+import 'package:fingerprint_auth_app/register_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -8,19 +10,55 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
-  void _login() {
-    // For now, just navigate to the main page on button press
-    Navigator.of(context).pushReplacementNamed(
-      '/main',
-      arguments: _usernameController.text,
-    );
+  bool _isLoading = false;
+
+  // ✅ Updated: Get device ID from AuthService (SharedPreferences UUID)
+  Future<String> _getDeviceId() async {
+    return await _authService.getDeviceId();
+  }
+
+  Future<void> _login() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      final deviceId = await _getDeviceId();
+
+      final success = await _authService.signInWithUsernameAndPassword(
+          email, password, deviceId);
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (success) {
+        Navigator.of(context).pushReplacementNamed('/main', arguments: email);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Invalid email, password, or unauthorized device.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login error: ${e.toString()}')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... no changes needed below this line ...
+    // Keep your existing UI code.
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FB),
       body: Center(
@@ -40,7 +78,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Please log in',
@@ -52,15 +89,15 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 32),
               TextField(
-                controller: _usernameController,
-                decoration: InputDecoration(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  hintText: 'Email',
+                  prefixIcon: Icon(Icons.email, color: Colors.white70),
                   filled: true,
-                  fillColor: const Color(0xFF395075),
-                  hintText: 'Username',
-                  hintStyle: const TextStyle(color: Colors.white70),
-                  prefixIcon: const Icon(Icons.person, color: Colors.white70),
+                  fillColor: Color(0xFF395075),
+                  hintStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
                     borderSide: BorderSide.none,
                   ),
                 ),
@@ -70,14 +107,14 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: true,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFF395075),
+                decoration: const InputDecoration(
                   hintText: 'Password',
-                  hintStyle: const TextStyle(color: Colors.white70),
-                  prefixIcon: const Icon(Icons.lock, color: Colors.white70),
+                  prefixIcon: Icon(Icons.lock, color: Colors.white70),
+                  filled: true,
+                  fillColor: Color(0xFF395075),
+                  hintStyle: TextStyle(color: Colors.white70),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.all(Radius.circular(10)),
                     borderSide: BorderSide.none,
                   ),
                 ),
@@ -87,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _login,
+                  onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF5CA6D1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -95,21 +132,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'Log in',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Log in',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
               const SizedBox(height: 16),
-              Center(
-                child: TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    'No account? Register',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const RegisterPage()),
+                  );
+                },
+                child: const Text('No account? Register',
+                    style: TextStyle(color: Colors.white70)),
               ),
             ],
           ),
@@ -120,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }

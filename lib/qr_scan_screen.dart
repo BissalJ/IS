@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'secure_identification.dart'; // <-- Import this
+import 'main_page_screen.dart'; // For returning to main page
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'session_lookup.dart';
 
 class QRScanScreen extends StatefulWidget {
   const QRScanScreen({super.key});
@@ -10,24 +15,40 @@ class QRScanScreen extends StatefulWidget {
 
 class _QRScanScreenState extends State<QRScanScreen> {
   bool scanned = false;
-  MobileScannerController? controller;
+  final MobileScannerController controller = MobileScannerController();
 
-  void _onDetect(BarcodeCapture capture) {
+  void _onDetect(BarcodeCapture capture) async {
     if (scanned) return;
+
     final barcodes = capture.barcodes;
     if (barcodes.isNotEmpty) {
-      scanned = true;
+      scanned = true; // Prevent multiple scans
+
       final code = barcodes.first.rawValue ?? '';
+      print('🟡 Scanned QR code: $code');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('QR Code: $code')),
+        SnackBar(content: Text('Processing scanned QR...')),
       );
-      Navigator.of(context).popUntil(ModalRoute.withName('/main'));
+
+      // Verify signature and mark attendance
+      final result = await getSessionPublicKeyAndVerify(code);
+      print('✅ Signature verification result: ${result.message}');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message)),
+      );
+
+      await Future.delayed(const Duration(seconds: 2));
+      scanned = false;
+    } else {
+      print('❌ No QR code detected.');
     }
   }
 
   @override
   void dispose() {
-    controller?.dispose();
+    controller.dispose();
     super.dispose();
   }
 
