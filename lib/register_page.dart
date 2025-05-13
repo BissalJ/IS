@@ -14,6 +14,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _loading = false;
+  bool _obscurePassword = true;
 
   Future<void> _registerUser() async {
     try {
@@ -32,6 +33,32 @@ class _RegisterPageState extends State<RegisterPage> {
       if (!RegExp(r'^\d{6}$').hasMatch(cmsId)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('CMS ID must be exactly 6 digits')),
+        );
+        return;
+      }
+
+      if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid email address')),
+        );
+        return;
+      }
+
+      if (password.length < 8) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Password must be at least 8 characters long')),
+        );
+        return;
+      }
+
+      if (!RegExp(
+              r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$')
+          .hasMatch(password)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Password must contain at least one letter, one number and one special character')),
         );
         return;
       }
@@ -84,7 +111,110 @@ class _RegisterPageState extends State<RegisterPage> {
           borderSide: BorderSide.none,
         ),
         counterText: '',
+        suffixIcon: label == 'Password'
+            ? IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.white70,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+              )
+            : null,
       ),
+    );
+  }
+
+  Widget _buildPasswordRequirements() {
+    final password = _passwordController.text;
+    final hasMinLength = password.length >= 8;
+    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(password);
+    final hasNumber = RegExp(r'[0-9]').hasMatch(password);
+    final hasSpecialChar = RegExp(r'[@$!%*#?&]').hasMatch(password);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Password must contain:',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(
+              hasMinLength ? Icons.check_circle : Icons.error,
+              color: hasMinLength ? Colors.green : Colors.white70,
+              size: 14,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '8 characters minimum',
+              style: TextStyle(
+                color: hasMinLength ? Colors.green : Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            Icon(
+              hasLetter ? Icons.check_circle : Icons.error,
+              color: hasLetter ? Colors.green : Colors.white70,
+              size: 14,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'At least one letter',
+              style: TextStyle(
+                color: hasLetter ? Colors.green : Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            Icon(
+              hasNumber ? Icons.check_circle : Icons.error,
+              color: hasNumber ? Colors.green : Colors.white70,
+              size: 14,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'At least one number',
+              style: TextStyle(
+                color: hasNumber ? Colors.green : Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            Icon(
+              hasSpecialChar ? Icons.check_circle : Icons.error,
+              color: hasSpecialChar ? Colors.green : Colors.white70,
+              size: 14,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'At least one special character (@\$!%*#?&)',
+              style: TextStyle(
+                color: hasSpecialChar ? Colors.green : Colors.white70,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -131,8 +261,10 @@ class _RegisterPageState extends State<RegisterPage> {
                     keyboardType: TextInputType.emailAddress),
                 const SizedBox(height: 16),
                 _buildTextField(_passwordController, 'Password', Icons.lock,
-                    obscure: true),
-                const SizedBox(height: 24),
+                    obscure: _obscurePassword),
+                const SizedBox(height: 8),
+                _buildPasswordRequirements(),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
